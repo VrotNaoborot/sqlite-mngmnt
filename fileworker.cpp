@@ -2,21 +2,12 @@
 #include <iostream>
 #include <string>
 #include <QtSql>
-#include <QCoreApplication>
-// #include <windows.h>
 #include <QFile>
 #include <QString>
-
-
-
-using namespace std;
-
-#include "fileworker.h"
 
 FileWorker::FileWorker() {
     // Пустая реализация пустого конструктора
 }
-
 
 bool FileWorker::fileExists(const QString &fileName) {
     QFile file(fileName);
@@ -24,15 +15,13 @@ bool FileWorker::fileExists(const QString &fileName) {
 }
 
 std::string FileWorker::get_path() {
-    // ф-ция для получения названия бд
-    string pth;
+    std::string pth;
     while (true) {
         std::cout << "Введите название файла (с .db)" << std::endl;
         std::getline(std::cin, pth);
         if (!fileExists(QString::fromStdString(pth))) {
             std::cerr << "Файл базы данных с названием '" << pth << "' не существует" << std::endl;
-        }
-        else{
+        } else {
             return pth;
         }
     }
@@ -40,17 +29,12 @@ std::string FileWorker::get_path() {
 
 QString FileWorker::generate_insert(const QString &tableName, const QStringList &columns, const QStringList &values) {
     QString query = "INSERT INTO " + tableName + " (";
-
-    // Формируем список столбцов
     query += columns.join(", ") + ") VALUES (";
 
-    // Формируем список значений
     for (int i = 0; i < values.size(); ++i) {
         if (i > 0) {
             query += ", ";
         }
-
-        // Если значение - строка, добавляем кавычки
         if (values[i].startsWith('\"') && values[i].endsWith('\"')) {
             query += values[i];
         } else {
@@ -78,7 +62,7 @@ QStringList FileWorker::convert_to_list(const QString &line) {
         }
     }
 
-    fields.append(field.trimmed()); // добавляем последнее поле
+    fields.append(field.trimmed());
     return fields;
 }
 
@@ -86,7 +70,6 @@ void FileWorker::parse_csv(const QString &filePath, const QString &tableName, QS
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         std::cerr << "Не удалось открыть файл: " << file.errorString().toStdString() << std::endl;
-        file.close();
         return;
     }
 
@@ -94,19 +77,14 @@ void FileWorker::parse_csv(const QString &filePath, const QString &tableName, QS
     QString headerLine = in.readLine();
     QStringList columns = convert_to_list(headerLine);
 
-    // создаем таблицу, если она не существует
     QString createTableQuery = "CREATE TABLE IF NOT EXISTS " + tableName + " (";
     for (int i = 0; i < columns.size(); ++i) {
         createTableQuery += columns[i];
-
-        // Проверяем, если столбец - ID
         if (columns[i] == "ID") {
             createTableQuery += " INTEGER PRIMARY KEY";
         } else {
             createTableQuery += " TEXT";
         }
-
-        // Если это последний столбец, не добавляем запятую
         if (i < columns.size() - 1) {
             createTableQuery += ", ";
         }
@@ -114,29 +92,39 @@ void FileWorker::parse_csv(const QString &filePath, const QString &tableName, QS
     createTableQuery += ");";
     std::cout << "Запрос на создание таблицы: " << createTableQuery.toStdString() << std::endl;
 
-
     QSqlQuery createTableSqlQuery(database);
     if (!createTableSqlQuery.exec(createTableQuery)) {
         std::cerr << "Ошибка при создании таблицы" << createTableSqlQuery.lastError().text().toStdString() << std::endl;
         return;
     }
 
+    QList<QStringList> rows;
     while (!in.atEnd()) {
         QString dataLine = in.readLine();
         QStringList values = convert_to_list(dataLine);
+        rows.append(values);
+    }
 
-        QString query = generate_insert(tableName, columns, values);
-        std::cout << query.toStdString() << std::endl;
-
-        QSqlQuery sqlQuery(database);
-        if (!sqlQuery.exec(query)) {
-            std::cerr << "Ошибка при выполнении запроса:" << sqlQuery.lastError().text().toStdString() << std::endl;
-            file.close();
-            return;
+    QString insertQuery = "INSERT INTO " + tableName + " (" + columns.join(", ") + ") VALUES ";
+    QStringList valueStrings;
+    for (const QStringList &values : rows) {
+        QString valueString = "(";
+        for (int i = 0; i < values.size(); ++i) {
+            if (i > 0) {
+                valueString += ", ";
+            }
+            valueString += "'" + values[i] + "'";
         }
+        valueString += ")";
+        valueStrings.append(valueString);
+    }
+    insertQuery += valueStrings.join(", ") + ";";
+    std::cout << "Запрос на вставку данных: " << insertQuery.toStdString() << std::endl;
+
+    QSqlQuery insertSqlQuery(database);
+    if (!insertSqlQuery.exec(insertQuery)) {
+        std::cerr << "Ошибка при выполнении запроса:" << insertSqlQuery.lastError().text().toStdString() << std::endl;
     }
 
     file.close();
-};
-
-
+}

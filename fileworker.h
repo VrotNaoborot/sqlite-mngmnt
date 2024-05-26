@@ -1,10 +1,9 @@
 #ifndef FILEWORKER_H
 #define FILEWORKER_H
 
-#include <Qstring>
 #include <QtSql>
-
-using namespace std;
+#include <QString>
+#include <QStringList>
 
 class FileWorker {
 public:
