@@ -86,7 +86,14 @@ void MainWorker::execute_command(QSqlDatabase db) {
     }
 }
 
-void MainWorker::start() {
+
+int main(int argc, char *argv[]) {
+    QCoreApplication app(argc, argv);
+
+    // Устанавливаем кодировку UTF-8 для консоли
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+
     std::string db_name;
 
     // Создание объекта для работы с базой данных SQLite
@@ -106,22 +113,10 @@ void MainWorker::start() {
     if (!db.isValid()) {
         std::cout << "Перезапустите приложение" << std::endl;
         db.close();
-        return;
     }
 
     MainWorker mainWorker;
     mainWorker.execute_command(db);
-}
-
-int main(int argc, char *argv[]) {
-    QCoreApplication app(argc, argv);
-
-    // Устанавливаем кодировку UTF-8 для консоли
-    SetConsoleOutputCP(CP_UTF8);
-    SetConsoleCP(CP_UTF8);
-
-    MainWorker mainWorker;
-    mainWorker.start();
 
     return app.exec();
 }
